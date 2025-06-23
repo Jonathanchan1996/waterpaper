@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Multi-Array Plot</title>
+    <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        #plot {
+            width: 80%;
+            height: 80%;
+        }
+    </style>
+</head>
+<body>
+    <div id="plot"></div>
+
+    <script>
+        // Initialize WebSocket connection
+        const socket = new WebSocket('ws://localhost:5005');
+
+        // Create an empty plot
+        const layout = {
+            title: 'Multi-Array Plot',
+            xaxis: { title: 'Index' },
+            yaxis: { title: 'Value' },
+        };
+
+        Plotly.newPlot('plot', [], layout);
+
+        // Handle incoming data
+        socket.onmessage = function (event) {
+            try {
+                const data = JSON.parse(event.data); // Expecting { arrays: [[...], [...], [...]] }
+                if (data.arrays && Array.isArray(data.arrays)) {
+                    const traces = data.arrays.map((array, index) => ({
+                        x: Array.from({ length: array.length }, (_, i) => i), // Indexes as x-axis
+                        y: array,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: `Array ${index + 1}`,
+                    }));
+
+                    // Update the plot with the new traces
+                    Plotly.react('plot', traces, layout);
+                }
+            } catch (err) {
+                console.error('Error parsing server data:', err);
+            }
+        };
+
+        socket.onopen = () => console.log('WebSocket connection established.');
+        socket.onerror = (error) => console.error('WebSocket error:', error);
+        socket.onclose = () => console.log('WebSocket connection closed.');
+    </script>
+</body>
+</html>
